@@ -1,0 +1,60 @@
+appId: com.entrenamiento.app
+productName: App Entrenamiento
+copyright: Copyright © 2024
+
+directories:
+  buildResources: resources
+  output: dist
+
+files:
+  - out/**/*
+  - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  - "!.editorconfig"
+  - "!**/._*"
+  - "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}"
+  - "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}"
+  - "!**/{appveyor.yml,.travis.yml,circle.yml}"
+  - "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+
+win:
+  executableName: AppEntrenamiento
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerLanguages: es-AR
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+
+mac:
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    - NSDocumentsFolderUsageDescription: La aplicación necesita acceso a documentos para importar archivos de entrenamiento.
+    - NSDownloadsFolderUsageDescription: La aplicación necesita acceso a descargas para importar archivos de entrenamiento.
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+    - target: zip
+      arch:
+        - x64
+        - arm64
+
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  maintainer: entrenamiento.app
+  category: HealthAndFitness
+
+publish:
+  provider: github
+  owner: OWNER
+  repo: REPO
+  private: true
