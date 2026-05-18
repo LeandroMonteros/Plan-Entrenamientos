@@ -31,6 +31,8 @@ const api = {
     update: (data: unknown) => invoke<Exercise>(IPC.EXERCISES_UPDATE, data),
     delete: (id: number) => invoke<boolean>(IPC.EXERCISES_DELETE, id),
     getMuscleGroups: () => invoke<MuscleGroup[]>(IPC.EXERCISES_GET_MUSCLE_GROUPS),
+    setMedia: (exerciseId: number, type: 'image' | 'video', sourcePath: string | null) =>
+      invoke<Exercise>(IPC.EXERCISES_SET_MEDIA, { exerciseId, type, sourcePath }),
   },
 
   gym: {

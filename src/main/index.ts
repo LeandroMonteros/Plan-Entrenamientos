@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, protocol, net } from 'electron'
 import { join } from 'path'
 import log from 'electron-log'
 import { initDb, closeDb } from './db/connection'
@@ -7,6 +7,11 @@ import { registerExerciseHandlers } from './ipc/exercises'
 import { registerGymHandlers } from './ipc/gym'
 import { registerRunningHandlers } from './ipc/running'
 import { registerConfigHandlers } from './ipc/config'
+
+// Registro previo al ready: necesario para que el scheme sea reconocido en el renderer
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'media', privileges: { secure: true, standard: true, supportFetchAPI: true } },
+])
 
 log.transports.file.level = 'info'
 log.info('App starting...')
@@ -52,6 +57,12 @@ app.whenReady().then(() => {
   if (process.platform === 'win32') {
     app.setAppUserModelId(app.isPackaged ? 'com.entrenamiento.app' : process.execPath)
   }
+
+  // Sirve archivos locales de media (imágenes/videos de ejercicios) al renderer
+  protocol.handle('media', (request) => {
+    const filePath = decodeURIComponent(request.url.replace('media://', ''))
+    return net.fetch(`file:///${filePath.replace(/\\/g, '/')}`)
+  })
 
   try {
     initDb()

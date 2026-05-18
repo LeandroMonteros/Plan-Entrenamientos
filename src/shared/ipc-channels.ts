@@ -15,6 +15,7 @@ export const IPC = {
   EXERCISES_UPDATE: 'exercises:update',
   EXERCISES_DELETE: 'exercises:delete',
   EXERCISES_GET_MUSCLE_GROUPS: 'exercises:getMuscleGroups',
+  EXERCISES_SET_MEDIA: 'exercises:setMedia',
 
   // Gym - Planes
   GYM_PLANS_GET_BY_CLIENT: 'gym:plans:getByClient',

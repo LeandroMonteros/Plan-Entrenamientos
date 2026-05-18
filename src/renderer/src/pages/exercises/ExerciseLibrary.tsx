@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, Search, Filter, X, Dumbbell } from 'lucide-react'
+import { Plus, Search, X, Dumbbell, Image, Video, Trash2, Upload } from 'lucide-react'
 import { api, call } from '../../utils/api'
 import { PageHeader, EmptyState, LoadingState } from '../../components/Layout'
 import { Card } from '../../components/ui/Card'
@@ -12,6 +12,13 @@ import type { Exercise, MuscleGroup } from '@shared/types'
 
 const EQ_OPTIONS = [{ value: '', label: 'Todo el equipamiento' }, ...EQUIPMENT_TYPES]
 
+const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+const VIDEO_EXTS = ['mp4', 'mov', 'avi', 'webm', 'mkv']
+
+function mediaUrl(path: string): string {
+  return `media://${path.replace(/\\/g, '/')}`
+}
+
 export function ExerciseLibrary() {
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [muscleGroups, setMuscleGroups] = useState<MuscleGroup[]>([])
@@ -22,6 +29,7 @@ export function ExerciseLibrary() {
   const [showModal, setShowModal] = useState(false)
   const [editExercise, setEditExercise] = useState<Exercise | null>(null)
   const [selected, setSelected] = useState<Exercise | null>(null)
+  const [uploadingMedia, setUploadingMedia] = useState<'image' | 'video' | null>(null)
 
   useEffect(() => {
     loadData()
@@ -57,6 +65,11 @@ export function ExerciseLibrary() {
         }),
       )
       setExercises(data)
+      // Actualizar el ejercicio seleccionado si sigue en la lista
+      if (selected) {
+        const updated = data.find((e) => e.id === selected.id)
+        if (updated) setSelected(updated)
+      }
     } catch (err) {
       console.error(err)
     }
@@ -74,8 +87,46 @@ export function ExerciseLibrary() {
     }
   }
 
-  const mgOptions = [{ value: '', label: 'Todos los músculos' }, ...muscleGroups.map((m) => ({ value: m.id.toString(), label: m.name }))]
+  async function handlePickMedia(type: 'image' | 'video') {
+    if (!selected) return
+    setUploadingMedia(type)
+    try {
+      const extensions = type === 'image' ? IMAGE_EXTS : VIDEO_EXTS
+      const name = type === 'image' ? 'Imágenes' : 'Videos'
+      const result = await call(() =>
+        api.dialog.openFile([{ name, extensions }])
+      )
+      if (!result) return
+      const updated = await call(() =>
+        api.exercises.setMedia(selected.id, type, result)
+      )
+      setSelected(updated)
+      setExercises((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setUploadingMedia(null)
+    }
+  }
 
+  async function handleRemoveMedia(type: 'image' | 'video') {
+    if (!selected) return
+    if (!confirm(`¿Eliminar ${type === 'image' ? 'la imagen' : 'el video'}?`)) return
+    try {
+      const updated = await call(() =>
+        api.exercises.setMedia(selected.id, type, null)
+      )
+      setSelected(updated)
+      setExercises((prev) => prev.map((e) => (e.id === updated.id ? updated : e)))
+    } catch (err) {
+      alert((err as Error).message)
+    }
+  }
+
+  const mgOptions = [
+    { value: '', label: 'Todos los músculos' },
+    ...muscleGroups.map((m) => ({ value: m.id.toString(), label: m.name })),
+  ]
   const hasFilters = !!search || !!filterMuscle || !!filterEquipment
 
   return (
@@ -90,7 +141,7 @@ export function ExerciseLibrary() {
         }
       />
 
-      {/* Filters */}
+      {/* Filtros */}
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -127,7 +178,7 @@ export function ExerciseLibrary() {
       </div>
 
       <div className="flex gap-4">
-        {/* List */}
+        {/* Lista */}
         <Card className="flex-1 overflow-hidden">
           {loading ? (
             <LoadingState />
@@ -143,30 +194,130 @@ export function ExerciseLibrary() {
                     selected?.id === ex.id ? 'bg-primary-50 dark:bg-primary-900/20' : ''
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                    <Dumbbell className="w-5 h-5 text-gray-500" />
+                  {/* Thumbnail */}
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                    {ex.imagePath ? (
+                      <img
+                        src={mediaUrl(ex.imagePath)}
+                        alt={ex.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                      />
+                    ) : (
+                      <Dumbbell className="w-5 h-5 text-gray-500" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{ex.name}</p>
-                    <p className="text-xs text-gray-500 truncate">{ex.primaryMuscleGroupName} · {ex.equipmentType}</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {ex.primaryMuscleGroupName} · {ex.equipmentType}
+                      {ex.videoPath && <span className="ml-1 text-blue-400">▶</span>}
+                    </p>
                   </div>
-                  {ex.isDefault ? (
-                    <Badge variant="indigo">Predefinido</Badge>
-                  ) : null}
+                  {ex.isDefault ? <Badge variant="indigo">Predefinido</Badge> : null}
                 </button>
               ))}
             </div>
           )}
         </Card>
 
-        {/* Detail panel */}
+        {/* Panel de detalle */}
         {selected && (
-          <Card className="w-72 shrink-0 self-start">
-            <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+          <Card className="w-80 shrink-0 self-start overflow-hidden">
+            {/* Zona de imagen */}
+            <div className="relative bg-gray-900 aspect-video flex items-center justify-center group">
+              {selected.imagePath ? (
+                <>
+                  <img
+                    src={mediaUrl(selected.imagePath)}
+                    alt={selected.name}
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    onClick={() => handleRemoveMedia('image')}
+                    className="absolute top-2 right-2 w-7 h-7 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    title="Quitar imagen"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-white" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => handlePickMedia('image')}
+                  disabled={uploadingMedia === 'image'}
+                  className="flex flex-col items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors p-6"
+                >
+                  <Image className="w-8 h-8" />
+                  <span className="text-xs">{uploadingMedia === 'image' ? 'Cargando...' : 'Agregar imagen'}</span>
+                </button>
+              )}
+            </div>
+
+            {/* Acciones de imagen si ya existe */}
+            {selected.imagePath && (
+              <div className="px-4 pt-3">
+                <button
+                  onClick={() => handlePickMedia('image')}
+                  disabled={uploadingMedia === 'image'}
+                  className="flex items-center gap-1.5 text-xs text-primary-400 hover:text-primary-300 transition-colors"
+                >
+                  <Upload className="w-3 h-3" />
+                  {uploadingMedia === 'image' ? 'Cargando...' : 'Cambiar imagen'}
+                </button>
+              </div>
+            )}
+
+            {/* Info básica */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="font-bold text-gray-900 dark:text-gray-100">{selected.name}</h3>
               <Badge variant="blue" className="mt-1">{selected.primaryMuscleGroupName}</Badge>
             </div>
-            <div className="p-5 space-y-3">
+
+            {/* Video */}
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                  <Video className="w-3.5 h-3.5" /> Video
+                </span>
+                {selected.videoPath && (
+                  <button
+                    onClick={() => handleRemoveMedia('video')}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </div>
+              {selected.videoPath ? (
+                <>
+                  <video
+                    src={mediaUrl(selected.videoPath)}
+                    controls
+                    className="w-full rounded-lg max-h-40 bg-black"
+                  />
+                  <button
+                    onClick={() => handlePickMedia('video')}
+                    disabled={uploadingMedia === 'video'}
+                    className="mt-1.5 flex items-center gap-1.5 text-xs text-primary-400 hover:text-primary-300 transition-colors"
+                  >
+                    <Upload className="w-3 h-3" />
+                    {uploadingMedia === 'video' ? 'Cargando...' : 'Cambiar video'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => handlePickMedia('video')}
+                  disabled={uploadingMedia === 'video'}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg text-xs text-gray-400 hover:border-primary-400 hover:text-primary-400 transition-colors"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  {uploadingMedia === 'video' ? 'Cargando...' : 'Agregar video'}
+                </button>
+              )}
+            </div>
+
+            {/* Descripción y notas */}
+            <div className="p-4 space-y-3">
               {selected.description && (
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Descripción</p>
@@ -189,9 +340,15 @@ export function ExerciseLibrary() {
                   <p className="font-medium text-gray-700 dark:text-gray-300">{selected.exerciseType}</p>
                 </div>
               </div>
+
               {!selected.isDefault && (
                 <div className="flex gap-2 pt-2">
-                  <Button variant="secondary" size="sm" className="flex-1" onClick={() => { setEditExercise(selected); setShowModal(true) }}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => { setEditExercise(selected); setShowModal(true) }}
+                  >
                     Editar
                   </Button>
                   <Button variant="danger" size="sm" onClick={() => handleDelete(selected)}>
@@ -271,9 +428,25 @@ function ExerciseModal({
     <Modal open onClose={onClose} title={isEdit ? 'Editar ejercicio' : 'Nuevo ejercicio'}>
       <div className="space-y-4">
         <Input label="Nombre *" value={name} onChange={(e) => setName(e.target.value)} autoFocus />
-        <Select label="Músculo principal *" value={primaryMuscleGroupId} onChange={(e) => setPrimaryMuscleGroupId(e.target.value)} options={[{ value: '', label: 'Seleccionar...' }, ...mgOpts]} />
-        <Select label="Equipamiento" value={equipment} onChange={(e) => setEquipment(e.target.value)} options={eqOpts} />
-        <Textarea label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Descripción de la técnica..." />
+        <Select
+          label="Músculo principal *"
+          value={primaryMuscleGroupId}
+          onChange={(e) => setPrimaryMuscleGroupId(e.target.value)}
+          options={[{ value: '', label: 'Seleccionar...' }, ...mgOpts]}
+        />
+        <Select
+          label="Equipamiento"
+          value={equipment}
+          onChange={(e) => setEquipment(e.target.value)}
+          options={eqOpts}
+        />
+        <Textarea
+          label="Descripción"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          placeholder="Descripción de la técnica..."
+        />
         {error && <p className="text-sm text-red-500">{error}</p>}
         <div className="flex gap-3 justify-end">
           <Button variant="secondary" onClick={onClose}>Cancelar</Button>

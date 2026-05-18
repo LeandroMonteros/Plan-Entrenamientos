@@ -5,6 +5,7 @@ function rowToExercise(row: Record<string, unknown>): Exercise {
   return {
     ...(row as Exercise),
     secondaryMuscleGroupIds: JSON.parse((row.secondary_muscle_group_ids as string) || '[]'),
+    videoPath: (row.video_path as string | null) ?? null,
   }
 }
 
@@ -105,6 +106,12 @@ export const exerciseService = {
     })
 
     return this.getById(data.id)!
+  },
+
+  setMedia(id: number, type: 'image' | 'video', filePath: string | null): Exercise {
+    const column = type === 'image' ? 'image_path' : 'video_path'
+    getDb().prepare(`UPDATE exercises SET ${column} = ? WHERE id = ?`).run(filePath, id)
+    return this.getById(id)!
   },
 
   delete(id: number): void {

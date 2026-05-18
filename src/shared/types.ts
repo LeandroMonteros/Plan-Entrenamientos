@@ -59,6 +59,7 @@ export interface Exercise {
   description: string | null
   techniqueNotes: string | null
   imagePath: string | null
+  videoPath: string | null
   isDefault: number
   createdAt: string
 }

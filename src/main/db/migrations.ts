@@ -313,4 +313,8 @@ export const MIGRATIONS: { filename: string; sql: string }[] = [
       );
     `,
   },
+  {
+    filename: '005_exercise_media.sql',
+    sql: `ALTER TABLE exercises ADD COLUMN video_path TEXT;`,
+  },
 ]

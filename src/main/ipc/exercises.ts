@@ -1,5 +1,7 @@
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
 import { z } from 'zod'
+import { join, extname } from 'path'
+import { promises as fs } from 'fs'
 import log from 'electron-log'
 import { IPC } from '@shared/ipc-channels'
 import { exerciseService } from '../services/exerciseService'
@@ -75,6 +77,31 @@ export function registerExerciseHandlers(): void {
     try {
       exerciseService.delete(id)
       return ok(true)
+    } catch (err) {
+      return fail(err)
+    }
+  })
+
+  ipcMain.handle(IPC.EXERCISES_SET_MEDIA, async (_e, input: unknown) => {
+    try {
+      const { exerciseId, type, sourcePath } = z.object({
+        exerciseId: z.number(),
+        type: z.enum(['image', 'video']),
+        sourcePath: z.string().nullable(),
+      }).parse(input)
+
+      if (sourcePath === null) {
+        return ok(exerciseService.setMedia(exerciseId, type, null))
+      }
+
+      const mediaDir = join(app.getPath('userData'), 'media', 'exercises')
+      await fs.mkdir(mediaDir, { recursive: true })
+
+      const ext = extname(sourcePath).toLowerCase()
+      const destPath = join(mediaDir, `${exerciseId}_${type}_${Date.now()}${ext}`)
+      await fs.copyFile(sourcePath, destPath)
+
+      return ok(exerciseService.setMedia(exerciseId, type, destPath))
     } catch (err) {
       return fail(err)
     }
