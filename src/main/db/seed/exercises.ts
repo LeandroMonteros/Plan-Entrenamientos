@@ -1,5 +1,62 @@
 import Database from 'better-sqlite3'
+import { copyFileSync, existsSync, mkdirSync } from 'fs'
+import { join } from 'path'
+import log from 'electron-log'
 import { getMuscleGroupIdMap } from './muscle_groups'
+
+const IMAGE_FILES: Record<string, string> = {
+  'Press banca plano': 'press_banca_plano.png',
+  'Press banca inclinado': 'press_banca_inclinado.png',
+  'Press banca declinado': 'press_banca_declinado.png',
+  'Aperturas con mancuernas': 'aperturas_mancuernas.png',
+  'Crossover en polea': 'crossover_polea.png',
+  'Fondos en paralelas': 'fondos_paralelas.png',
+  'Press con mancuernas plano': 'press_mancuernas_plano.png',
+  'Dominadas': 'dominadas.png',
+  'Jalón al pecho': 'jalon_pecho.png',
+  'Remo con barra': 'remo_barra.png',
+  'Remo con mancuerna': 'remo_mancuerna.png',
+  'Pull-over con mancuerna': 'pullover_mancuerna.png',
+  'Facepull': 'facepull.png',
+  'Encogimientos con barra': 'encogimientos_barra.png',
+  'Remo en máquina': 'remo_maquina.png',
+  'Press militar con barra': 'press_militar_barra.png',
+  'Press Arnold': 'press_arnold.png',
+  'Elevaciones laterales': 'elevaciones_laterales.png',
+  'Elevaciones frontales': 'elevaciones_frontales.png',
+  'Pájaros': 'pajaros.png',
+  'Remo al mentón': 'remo_menton.png',
+  'Curl con barra': 'curl_barra.png',
+  'Curl martillo': 'curl_martillo.png',
+  'Curl concentrado': 'curl_concentrado.png',
+  'Curl en polea': 'curl_polea.png',
+  'Curl inclinado': 'curl_inclinado.png',
+  'Press francés': 'press_frances.png',
+  'Extensión en polea': 'extension_polea.png',
+  'Fondos en banco': 'fondos_banco.png',
+  'Patada de tríceps': 'patada_triceps.png',
+  'Extensión por encima de la cabeza': 'extension_cabeza.png',
+  'Sentadilla libre': 'sentadilla_libre.png',
+  'Sentadilla hack': 'sentadilla_hack.png',
+  'Prensa de piernas': 'prensa_piernas.png',
+  'Extensión de cuádriceps': 'extension_cuadriceps.png',
+  'Curl de isquiotibiales': 'curl_isquiotibiales.png',
+  'Peso muerto rumano': 'peso_muerto_rumano.png',
+  'Hip thrust': 'hip_thrust.png',
+  'Gemelos de pie': 'gemelos_pie.png',
+  'Gemelos sentado': 'gemelos_sentado.png',
+  'Zancadas': 'zancadas.png',
+  'Sentadilla goblet': 'sentadilla_goblet.png',
+  'Plancha': 'plancha.png',
+  'Crunch': 'crunch.png',
+  'Elevación de piernas': 'elevacion_piernas.png',
+  'Rueda abdominal': 'rueda_abdominal.png',
+  'Russian twist': 'russian_twist.png',
+  'Dead bug': 'dead_bug.png',
+  'Abductor en máquina': 'abductor_maquina.png',
+  'Patada trasera en polea': 'patada_trasera_polea.png',
+  'Monster walk': 'monster_walk.png',
+}
 
 interface ExerciseSeed {
   name: string
@@ -78,6 +135,45 @@ const EXERCISES: ExerciseSeed[] = [
   { name: 'Patada trasera en polea', primary: 'gluteos', secondary: [], equipment: 'polea', type: 'polea', description: 'De pie, empujar la pierna hacia atrás contra la polea.' },
   { name: 'Monster walk', primary: 'gluteos', secondary: ['piernas'], equipment: 'banda', type: 'banda', description: 'Con banda en los tobillos, caminar en cuclillas en semi-sentadilla.' },
 ]
+
+export function backfillExerciseImages(
+  db: Database.Database,
+  exercisesResourceDir: string,
+  mediaDestDir: string,
+): void {
+  mkdirSync(mediaDestDir, { recursive: true })
+
+  const rows = db
+    .prepare('SELECT id, name FROM exercises WHERE is_default = 1 AND image_path IS NULL')
+    .all() as { id: number; name: string }[]
+
+  if (rows.length === 0) return
+
+  const update = db.prepare('UPDATE exercises SET image_path = ? WHERE id = ?')
+
+  let copied = 0
+  for (const row of rows) {
+    const imageFile = IMAGE_FILES[row.name]
+    if (!imageFile) continue
+
+    const srcPath = join(exercisesResourceDir, imageFile)
+    if (!existsSync(srcPath)) {
+      log.warn(`Exercise image not found: ${srcPath}`)
+      continue
+    }
+
+    const destPath = join(mediaDestDir, imageFile)
+    try {
+      copyFileSync(srcPath, destPath)
+      update.run(destPath, row.id)
+      copied++
+    } catch (err) {
+      log.warn(`Failed to copy exercise image ${imageFile}:`, err)
+    }
+  }
+
+  if (copied > 0) log.info(`Backfilled ${copied} exercise images`)
+}
 
 export function seedExercises(db: Database.Database): void {
   const idMap = getMuscleGroupIdMap(db)

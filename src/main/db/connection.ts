@@ -4,6 +4,7 @@ import { join } from 'path'
 import log from 'electron-log'
 import { runMigrations } from './migrate'
 import { runSeed } from './seed'
+import { backfillExerciseImages } from './seed/exercises'
 
 let _db: Database.Database | null = null
 
@@ -23,6 +24,12 @@ export function initDb(): void {
 
   runMigrations(_db)
   runSeed(_db)
+
+  const exercisesResourceDir = app.isPackaged
+    ? join(process.resourcesPath, 'exercises')
+    : join(app.getAppPath(), 'resources', 'exercises')
+  const mediaDestDir = join(app.getPath('userData'), 'media', 'exercises')
+  backfillExerciseImages(_db, exercisesResourceDir, mediaDestDir)
 
   log.info('Database initialized successfully')
 }

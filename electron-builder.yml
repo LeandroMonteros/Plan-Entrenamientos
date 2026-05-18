@@ -6,6 +6,14 @@ directories:
   buildResources: resources
   output: dist
 
+extraResources:
+  - from: resources/exercises
+    to: exercises
+    filter:
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.webp"
+
 files:
   - out/**/*
   - "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
@@ -55,6 +63,6 @@ linux:
 
 publish:
   provider: github
-  owner: OWNER
-  repo: REPO
+  owner: LeandroMonteros
+  repo: Plan-Entrenamientos
   private: true
