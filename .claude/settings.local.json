@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd \"C:\\\\Users\\\\leanm\\\\Desktop\\\\Proyectos\\\\Entrenamientos\"; $env:CI=\"true\"; pnpm install 2>&1 | Select-Object -Last 15)",
+      "Bash(cat \"C:\\\\Users\\\\leanm\\\\AppData\\\\Roaming\\\\app-entrenamiento\\\\logs\\\\main.log\" 2>/dev/null | tail -20)",
+      "Read(//c/Users/leanm/AppData/Roaming/app-entrenamiento/logs/**)"
+    ]
+  }
+}
