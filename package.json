@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "description": "Aplicación de gestión y seguimiento de entrenamiento físico",
   "main": "out/main/index.js",
-  "author": { "name": "Entrenador" },
+  "author": {
+    "name": "Entrenador"
+  },
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -16,6 +18,14 @@
     "lint": "eslint src --ext .ts,.tsx",
     "test": "vitest run",
     "postinstall": "electron-rebuild -f -w better-sqlite3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "esbuild",
+      "@electron/rebuild"
+    ]
   },
   "dependencies": {
     "better-sqlite3": "^9.6.0",
@@ -37,9 +47,6 @@
     "zod": "^3.23.8",
     "zustand": "^4.5.4"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "electron", "esbuild", "@electron/rebuild"]
-  },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.1",
     "@electron-toolkit/utils": "^3.0.0",
@@ -52,6 +59,7 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "cross-env": "^10.1.0",
     "drizzle-kit": "^0.22.8",
     "electron": "^30.1.2",
     "electron-builder": "^24.13.3",

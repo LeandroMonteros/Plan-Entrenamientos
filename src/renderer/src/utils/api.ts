@@ -1,6 +1,6 @@
 declare global {
   interface Window {
-    api: import('../../preload/index').ElectronAPI
+    api: import('../../../preload/index').ElectronAPI
   }
 }
 
